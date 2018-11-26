@@ -3,6 +3,14 @@
 
 WebAssembly を中間言語に採用した、32 ビット整数式の x64 JIT コンパイラです。C 言語で書かれていて、Visual Studio の標準 C ライブラリと Windows API に依存しています。
 
+## ファイルのダウンロード時の注意事項
+
+コマンドプロンプトで以下のコマンドを投入し、ゾーン情報を削除します。
+
+```
+C:\>echo.>int_calc_compiler-master.zip:Zone.Identifier
+```
+
 ## 開発環境
 
 * Visual Studio Community 2017
@@ -69,7 +77,7 @@ Note:
 ## ビルド方法
 
 * int_calc_compiler.sln ファイルをダブルクリックします。
-* Visual Studio のセキュリティ警告を回避してプロジェクトを開きます。  
+* ゾーン情報を削除していない場合は、Visual Studio のセキュリティ警告を回避してプロジェクトを開きます。  
 ![warning](https://raw.githubusercontent.com/tenpoku1000/int_calc_compiler/master/images/MSVC.PNG)
 * F7 キーを押下します。
 
