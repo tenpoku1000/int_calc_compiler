@@ -1,0 +1,29 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.27703.1
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "int_calc_compiler", "src\int_calc_compiler.vcxproj", "{41BABBCC-6416-455F-B0CC-E82C7493BF10}"
+	ProjectSection(ProjectDependencies) = postProject
+		{B92657DA-FE65-4911-B7B2-2C588C681B65} = {B92657DA-FE65-4911-B7B2-2C588C681B65}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tp_compiler", "src\lib\tp_compiler\tp_compiler.vcxproj", "{B92657DA-FE65-4911-B7B2-2C588C681B65}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{41BABBCC-6416-455F-B0CC-E82C7493BF10}.Debug|x64.ActiveCfg = Debug|x64
+		{41BABBCC-6416-455F-B0CC-E82C7493BF10}.Debug|x64.Build.0 = Debug|x64
+		{B92657DA-FE65-4911-B7B2-2C588C681B65}.Debug|x64.ActiveCfg = Debug|x64
+		{B92657DA-FE65-4911-B7B2-2C588C681B65}.Debug|x64.Build.0 = Debug|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C2A8AD6D-94E2-48AC-BFE0-03C695CB0CFD}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,14 @@
+   {
+    member_hash_table[89].member_sama_hash_data[0]
+    DEFINED_REGISTER_OBJECT
+    member_var_index(1)
+    member_string(value2)
+   }
+
+   {
+    member_hash_table[90].member_sama_hash_data[0]
+    DEFINED_REGISTER_OBJECT
+    member_var_index(0)
+    member_string(value1)
+   }
+
