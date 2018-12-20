@@ -1199,17 +1199,7 @@
 ---------------------------
 
    {
-    TP_PARSE_TREE_GRAMMER_STATEMENT_2
-    TP_PARSE_TREE_TYPE_TOKEN
-       {
-        TP_SYMBOL_ID
-        TP_SYMBOL_ID_INT32
-         member_line(2)
-         member_column(1)
-         member_string(value1)
-         member_i32_value(0)
-       }
-
+    TP_PARSE_TREE_GRAMMER_STATEMENT_1
     TP_PARSE_TREE_TYPE_TOKEN
        {
         TP_SYMBOL_ID
@@ -1588,17 +1578,7 @@
 
     TP_PARSE_TREE_TYPE_NODE
        {
-        TP_PARSE_TREE_GRAMMER_STATEMENT_2
-        TP_PARSE_TREE_TYPE_TOKEN
-           {
-            TP_SYMBOL_ID
-            TP_SYMBOL_ID_INT32
-             member_line(2)
-             member_column(1)
-             member_string(value1)
-             member_i32_value(0)
-           }
-
+        TP_PARSE_TREE_GRAMMER_STATEMENT_1
         TP_PARSE_TREE_TYPE_TOKEN
            {
             TP_SYMBOL_ID
@@ -1981,17 +1961,7 @@
 
     TP_PARSE_TREE_TYPE_NODE
        {
-        TP_PARSE_TREE_GRAMMER_STATEMENT_2
-        TP_PARSE_TREE_TYPE_TOKEN
-           {
-            TP_SYMBOL_ID
-            TP_SYMBOL_ID_INT32
-             member_line(2)
-             member_column(1)
-             member_string(value1)
-             member_i32_value(0)
-           }
-
+        TP_PARSE_TREE_GRAMMER_STATEMENT_1
         TP_PARSE_TREE_TYPE_TOKEN
            {
             TP_SYMBOL_ID

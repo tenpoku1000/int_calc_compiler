@@ -418,6 +418,8 @@ static TP_PARSE_TREE* parse_statement(TP_SYMBOL_TABLE* symbol_table)
 
                 tmp_variable = tmp_type;
 
+                tmp_type = NULL;
+
                 tmp_variable->member_symbol_type = TP_SYMBOL_ID_INT32;
             }
         }else{
@@ -507,13 +509,13 @@ static TP_PARSE_TREE* parse_expression(TP_SYMBOL_TABLE* symbol_table)
         TP_TOKEN* tmp_plus_or_minus = NULL;
         TP_PARSE_TREE* tmp_term_2 = NULL;
 
-        if (tmp_term_1 = parse_term(symbol_table)) {
+        if (tmp_term_1 = parse_term(symbol_table)){
 
-            while (IS_TOKEN_PLUS(TP_POS(symbol_table)) || IS_TOKEN_MINUS(TP_POS(symbol_table))) {
+            while (IS_TOKEN_PLUS(TP_POS(symbol_table)) || IS_TOKEN_MINUS(TP_POS(symbol_table))){
 
                 tmp_plus_or_minus = TP_POS(symbol_table)++;
 
-                if (!(tmp_term_2 = parse_term(symbol_table))) {
+                if ( ! (tmp_term_2 = parse_term(symbol_table))){
 
                     tp_free_parse_subtree(symbol_table, &tmp_expression_1);
                     tp_free_parse_subtree(symbol_table, &tmp_term_1);

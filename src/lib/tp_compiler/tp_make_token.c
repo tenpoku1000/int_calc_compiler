@@ -705,16 +705,27 @@ static bool is_valid_utf_8(TP_SYMBOL_TABLE* symbol_table, uint8_t* lines_buffer,
 
         int32_t total_bytes = 0;
 
+        bool is_lead_byte_zero = false;
+
         // First byte.
         if (((uint8_t)0xC0 <= p[i]) && ((uint8_t)0xDF >= p[i])){
 
             total_bytes = 2;
+
+            is_lead_byte_zero = ((uint8_t)0xC0 == p[i]) ? true : false;
+
         }else if (((uint8_t)0xE0 <= p[i]) && ((uint8_t)0xEF >= p[i])){
 
             total_bytes = 3;
+
+            is_lead_byte_zero = ((uint8_t)0xE0 == p[i]) ? true : false;
+
         }else if (((uint8_t)0xF0 <= p[i]) && ((uint8_t)0xF7 >= p[i])){
 
             total_bytes = 4;
+
+            is_lead_byte_zero = ((uint8_t)0xF0 == p[i]) ? true : false;
+
         }else{
 
             TP_PUT_LOG_MSG(
@@ -743,11 +754,11 @@ static bool is_valid_utf_8(TP_SYMBOL_TABLE* symbol_table, uint8_t* lines_buffer,
             }
         }
 
-        for (size_t j = i + 1; subsequent_bytes > j; ++j){
+        if (is_lead_byte_zero){
 
-            if ((subsequent_bytes - 1) == j){
+	        for (size_t j = i + 1; subsequent_bytes > j; ++j){
 
-                if (((uint8_t)0x00 <= (p[j] & 0x3F)) && ((uint8_t)0x3F >= (p[j] & 0x3F))){
+	            if ((subsequent_bytes - 1) == j){
 
                     // Is bad ascii.
 
@@ -758,14 +769,14 @@ static bool is_valid_utf_8(TP_SYMBOL_TABLE* symbol_table, uint8_t* lines_buffer,
                     );
 
                     return false;
-                }
-            }else{
+	            }else{
 
-                if ((uint8_t)0x00 != (p[j] & 0x3F)){
+	                if ((uint8_t)0x00 != (p[j] & 0x3F)){
 
-                    break;
-                }
-            }
+	                    break;
+	                }
+	            }
+	        }
         }
 
         i += total_bytes - 1;

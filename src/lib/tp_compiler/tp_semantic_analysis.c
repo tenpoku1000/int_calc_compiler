@@ -185,6 +185,8 @@ static bool variable_reference_check_grammer_statement_2(TP_SYMBOL_TABLE* symbol
 
     if ( ! register_defined_variable(symbol_table, token_2)){
 
+        TP_PUT_LOG_MSG_TRACE(symbol_table);
+
         return false;
     }
 
@@ -269,7 +271,12 @@ static bool register_defined_variable(TP_SYMBOL_TABLE* symbol_table, TP_TOKEN* t
 
         switch (object.member_register_object_type){
         case DEFINED_REGISTER_OBJECT:
-            return true;
+            TP_PUT_LOG_MSG(
+                symbol_table, TP_LOG_TYPE_DISP_FORCE,
+                TP_MSG_FMT("ERROR: Duplicate DEFINED_REGISTER_OBJECT at %1 function."),
+                TP_LOG_PARAM_STRING(__func__)
+            );
+            return false;
         case UNDEFINED_REGISTER_OBJECT:
             TP_PUT_LOG_MSG(
                 symbol_table, TP_LOG_TYPE_DISP_FORCE,
