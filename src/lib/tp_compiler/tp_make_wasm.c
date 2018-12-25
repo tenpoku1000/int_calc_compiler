@@ -710,7 +710,7 @@ static bool wasm_gen_statement_1_and_2(
         }
         if ( ! get_var_value(symbol_table, parse_tree, 0, &var_value)){
 
-            TP_PUT_LOG_MSG_ICE(symbol_table);
+            TP_PUT_LOG_MSG_TRACE(symbol_table);
 
             return false;
         }
@@ -725,7 +725,7 @@ static bool wasm_gen_statement_1_and_2(
         }
         if ( ! get_var_value(symbol_table, parse_tree, 1, &var_value)){
 
-            TP_PUT_LOG_MSG_ICE(symbol_table);
+            TP_PUT_LOG_MSG_TRACE(symbol_table);
 
             return false;
         }
