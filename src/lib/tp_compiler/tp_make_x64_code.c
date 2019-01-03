@@ -1,5 +1,5 @@
 
-// Copyright (C) 2018 Shin'ichi Ichikawa. Released under the MIT license.
+// Copyright (C) 2018, 2019 Shin'ichi Ichikawa. Released under the MIT license.
 
 #include "tp_compiler.h"
 
@@ -639,7 +639,7 @@ error_out:
 bool tp_get_local_variable_offset(
     TP_SYMBOL_TABLE* symbol_table, uint32_t local_index, int32_t* local_variable_offset)
 {
-    int32_t offset = ((int32_t)local_index) * sizeof(int32_t) + symbol_table->member_padding_register_bytes;
+    int32_t offset = ((int32_t)local_index) * sizeof(int32_t);
 
     if (symbol_table->member_local_variable_size_max < offset){
 
@@ -664,8 +664,7 @@ bool tp_allocate_temporary_variable(
     TP_WASM_STACK_ELEMENT* wasm_stack_element)
 {
     int32_t offset =
-        + symbol_table->member_padding_register_bytes
-        + symbol_table->member_local_variable_size
+          symbol_table->member_local_variable_size
         + symbol_table->member_padding_local_variable_bytes
         + symbol_table->member_temporary_variable_size;
 
