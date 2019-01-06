@@ -3,10 +3,6 @@
 
 #include "tp_compiler.h"
 
-static uint32_t encode_x64_operand_2_memory_or_special_register(
-    TP_SYMBOL_TABLE* symbol_table, uint8_t* x64_code_buffer, uint32_t x64_code_offset,
-    TP_X64 x64_op, TP_WASM_STACK_ELEMENT* dst, TP_WASM_STACK_ELEMENT* src
-);
 static uint32_t encode_x64_32_register_to_x64_32_register(
     TP_SYMBOL_TABLE* symbol_table, uint8_t* x64_code_buffer, uint32_t x64_code_offset,
     TP_X64 x64_op, TP_WASM_STACK_ELEMENT* dst, TP_WASM_STACK_ELEMENT* src
@@ -505,6 +501,7 @@ uint32_t tp_encode_x64_2_operand(
     TP_X64 x64_op, TP_WASM_STACK_ELEMENT* op1, TP_WASM_STACK_ELEMENT* op2)
 {
     uint32_t x64_code_size = 0;
+    uint32_t tmp_x64_code_size = 0;
 
     if ((TP_WASM_OPCODE_I32_VALUE != op1->member_wasm_opcode) ||
         (TP_WASM_OPCODE_I32_VALUE != op2->member_wasm_opcode)){
@@ -534,19 +531,10 @@ uint32_t tp_encode_x64_2_operand(
             );
             break;
         case TP_X64_ITEM_KIND_MEMORY:
-            if ((TP_X64_IDIV == x64_op) || (TP_X64_IMUL == x64_op)){
-
-                x64_code_size = encode_x64_operand_2_memory_or_special_register(
-                    symbol_table, x64_code_buffer, x64_code_offset + x64_code_size,
-                    x64_op, op1, op2
-                );
-            }else{
-
-                x64_code_size = encode_x64_32_memory_offset_to_register(
-                    symbol_table, x64_code_buffer, x64_code_offset + x64_code_size,
-                    x64_op, op1, op2
-                );
-            }
+            x64_code_size = encode_x64_32_memory_offset_to_register(
+                symbol_table, x64_code_buffer, x64_code_offset + x64_code_size,
+                x64_op, op1, op2
+            );
             break;
         default:
             TP_PUT_LOG_MSG_ICE(symbol_table);
@@ -564,11 +552,40 @@ uint32_t tp_encode_x64_2_operand(
             );
             break;
         case TP_X64_ITEM_KIND_MEMORY:
-            x64_code_size = encode_x64_operand_2_memory_or_special_register(
-                symbol_table, x64_code_buffer, x64_code_offset + x64_code_size,
-                x64_op, op1, op2
+        {
+            tmp_x64_code_size = encode_x64_push_reg64(
+                symbol_table, x64_code_buffer, x64_code_offset + x64_code_size, TP_X64_64_REGISTER_RAX
             );
+
+            TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
+
+            TP_WASM_STACK_ELEMENT eax_op = {
+                .member_wasm_opcode = TP_WASM_OPCODE_I32_VALUE,
+                .member_x64_item_kind = TP_X64_ITEM_KIND_X86_32_REGISTER,
+                .member_x64_item.member_x86_32_register = TP_X86_32_REGISTER_EAX
+            };
+
+            tmp_x64_code_size = encode_x64_32_memory_offset_to_register(
+                symbol_table, x64_code_buffer, x64_code_offset + x64_code_size,
+                TP_X64_MOV, &eax_op, op1
+            );
+
+            TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
+
+            tmp_x64_code_size = encode_x64_32_memory_offset_to_register(
+                symbol_table, x64_code_buffer, x64_code_offset + x64_code_size,
+                x64_op, &eax_op, op2
+            );
+
+            TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
+
+            tmp_x64_code_size = encode_x64_pop_reg64(
+                symbol_table, x64_code_buffer, x64_code_offset + x64_code_size, TP_X64_64_REGISTER_RAX
+            );
+
+            TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
             break;
+        }
         default:
             TP_PUT_LOG_MSG_ICE(symbol_table);
             return 0;
@@ -589,81 +606,44 @@ uint32_t tp_encode_x64_2_operand(
     return x64_code_size;
 }
 
-static uint32_t encode_x64_operand_2_memory_or_special_register(
+static uint32_t encode_x64_32_register_to_x64_32_register(
     TP_SYMBOL_TABLE* symbol_table, uint8_t* x64_code_buffer, uint32_t x64_code_offset,
     TP_X64 x64_op, TP_WASM_STACK_ELEMENT* dst, TP_WASM_STACK_ELEMENT* src)
 {
     uint32_t x64_code_size = 0;
     uint32_t tmp_x64_code_size = 0;
 
-    if ((TP_WASM_OPCODE_I32_VALUE != dst->member_wasm_opcode) ||
-        (TP_WASM_OPCODE_I32_VALUE != src->member_wasm_opcode)){
+    bool is_dst_x86_32_register = (TP_X64_ITEM_KIND_X86_32_REGISTER == dst->member_x64_item_kind);
+    bool is_dst_EAX_register = (is_dst_x86_32_register &&
+        (TP_X86_32_REGISTER_EAX == dst->member_x64_item.member_x86_32_register)
+    );
+    bool is_use_EDX_register = (TP_X64_ITEM_KIND_X86_32_REGISTER ==
+        symbol_table->member_use_X86_32_register[TP_X86_32_REGISTER_EDX].member_x64_item_kind
+    );
+    bool is_dst_x64_32_register = (TP_X64_ITEM_KIND_X64_32_REGISTER == dst->member_x64_item_kind);
 
-        TP_PUT_LOG_MSG(
-            symbol_table, TP_LOG_TYPE_DISP_FORCE,
-            TP_MSG_FMT("ERROR: TP_WASM_OPCODE_I32_VALUE(%1) != (dst_op(%2) || src_op(%3))"),
-            TP_LOG_PARAM_UINT64_VALUE(TP_WASM_OPCODE_I32_VALUE),
-            TP_LOG_PARAM_UINT64_VALUE(dst->member_wasm_opcode),
-            TP_LOG_PARAM_UINT64_VALUE(src->member_wasm_opcode)
-        );
-
-        return 0;
-    }
-
-    if (TP_X64_ITEM_KIND_X86_32_REGISTER == src->member_x64_item_kind){
-
-        switch (src->member_x64_item.member_x86_32_register){
-        case TP_X86_32_REGISTER_EAX:
-//          break;
-        case TP_X86_32_REGISTER_EDX:
-            {
-                TP_WASM_STACK_ELEMENT tmp_src = {
-                    .member_wasm_opcode = TP_WASM_OPCODE_I32_VALUE
-                };
-
-                tmp_x64_code_size = 0;
-
-                if ( ! tp_allocate_temporary_variable(
-                    symbol_table, TP_X64_ALLOCATE_MEMORY, x64_code_buffer, x64_code_offset, &tmp_x64_code_size, &tmp_src)){
-
-                    TP_PUT_LOG_MSG_TRACE(symbol_table);
-
-                    return 0;
-                }
-
-                x64_code_size += tmp_x64_code_size;
-
-                tmp_x64_code_size = tp_encode_x64_2_operand(
-                    symbol_table, x64_code_buffer, x64_code_offset,
-                    TP_X64_MOV, &tmp_src, src
-                );
-
-                TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
-
-                if ( ! tp_free_register(symbol_table, src)){
-
-                    TP_PUT_LOG_MSG_TRACE(symbol_table);
-
-                    return 0;
-                }
-
-                *src = tmp_src;
-            }
-            break;
-        default:
-            break;
-        }
-    }
-
-    tmp_x64_code_size = encode_x64_push_reg64(symbol_table, x64_code_buffer, x64_code_offset, TP_X64_64_REGISTER_RAX);
-
-    TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
+    bool is_src_x86_32_register = (TP_X64_ITEM_KIND_X86_32_REGISTER == src->member_x64_item_kind);
+    bool is_src_x64_32_register = (TP_X64_ITEM_KIND_X64_32_REGISTER == src->member_x64_item_kind);
 
     if (TP_X64_IDIV == x64_op){
 
-        tmp_x64_code_size = encode_x64_push_reg64(symbol_table, x64_code_buffer, x64_code_offset, TP_X64_64_REGISTER_RDX);
+        if (false == is_dst_EAX_register){
 
-        TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
+            tmp_x64_code_size = encode_x64_push_reg64(
+                symbol_table, x64_code_buffer, x64_code_offset + x64_code_size, TP_X64_64_REGISTER_RAX
+            );
+
+            TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
+        }
+
+        if (is_use_EDX_register){
+
+            tmp_x64_code_size = encode_x64_push_reg64(
+                symbol_table, x64_code_buffer, x64_code_offset + x64_code_size, TP_X64_64_REGISTER_RDX
+            );
+
+            TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
+        }
 
         TP_WASM_STACK_ELEMENT edx_op = {
             .member_wasm_opcode = TP_WASM_OPCODE_I32_VALUE,
@@ -673,80 +653,10 @@ static uint32_t encode_x64_operand_2_memory_or_special_register(
 
         // xor edx, edx
         tmp_x64_code_size = tp_encode_x64_2_operand(
-            symbol_table, x64_code_buffer, x64_code_offset, TP_X64_XOR, &edx_op, &edx_op
+            symbol_table, x64_code_buffer, x64_code_offset + x64_code_size, TP_X64_XOR, &edx_op, &edx_op
         );
 
         TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
-    }
-
-    {
-        TP_WASM_STACK_ELEMENT tmp_op = {
-            .member_wasm_opcode = TP_WASM_OPCODE_I32_VALUE,
-            .member_x64_item_kind = TP_X64_ITEM_KIND_X86_32_REGISTER,
-            .member_x64_item.member_x86_32_register = TP_X86_32_REGISTER_EAX
-        };
-
-        tmp_x64_code_size = encode_x64_32_memory_offset_to_register(
-            symbol_table, x64_code_buffer, x64_code_offset + x64_code_size,
-            x64_op, &tmp_op, src
-        );
-
-        TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
-
-        tmp_x64_code_size = encode_x64_32_register_to_memory_offset(
-            symbol_table, x64_code_buffer, x64_code_offset + x64_code_size,
-            TP_X64_MOV, dst, &tmp_op
-        );
-
-        TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
-    }
-
-    if (TP_X64_IDIV == x64_op){
-
-        tmp_x64_code_size = encode_x64_pop_reg64(
-            symbol_table, x64_code_buffer, x64_code_offset + x64_code_size, TP_X64_64_REGISTER_RDX
-        );
-
-        TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
-    }
-
-    tmp_x64_code_size = encode_x64_pop_reg64(
-        symbol_table, x64_code_buffer, x64_code_offset + x64_code_size, TP_X64_64_REGISTER_RAX
-    );
-
-    TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
-
-    return x64_code_size;
-}
-
-static uint32_t encode_x64_32_register_to_x64_32_register(
-    TP_SYMBOL_TABLE* symbol_table, uint8_t* x64_code_buffer, uint32_t x64_code_offset,
-    TP_X64 x64_op, TP_WASM_STACK_ELEMENT* dst, TP_WASM_STACK_ELEMENT* src)
-{
-    uint32_t x64_code_size = 0;
-
-    bool is_dst_x86_32_register = (TP_X64_ITEM_KIND_X86_32_REGISTER == dst->member_x64_item_kind);
-    bool is_dst_EAX_register = (is_dst_x86_32_register &&
-        (TP_X86_32_REGISTER_EAX == dst->member_x64_item.member_x86_32_register)
-    );
-    bool is_dst_x64_32_register = (TP_X64_ITEM_KIND_X64_32_REGISTER == dst->member_x64_item_kind);
-
-    bool is_src_x86_32_register = (TP_X64_ITEM_KIND_X86_32_REGISTER == src->member_x64_item_kind);
-    bool is_src_x64_32_register = (TP_X64_ITEM_KIND_X64_32_REGISTER == src->member_x64_item_kind);
-
-    if ((false == is_dst_EAX_register) && (TP_X64_IDIV == x64_op)){
-
-        TP_PUT_LOG_MSG(
-            symbol_table, TP_LOG_TYPE_DISP_FORCE, TP_MSG_FMT("%1"),
-            TP_LOG_PARAM_STRING("ERROR: (false == is_dst_EAX_register) && (TP_X64_IDIV == x64_op)")
-        );
-
-        return 0;
-    }
-
-    if (is_dst_x64_32_register || is_src_x64_32_register){
-
-        ++x64_code_size;
     }
 
     if (x64_code_buffer){
@@ -761,18 +671,20 @@ static uint32_t encode_x64_32_register_to_x64_32_register(
                 }
 //              break;
             case TP_X64_IDIV:
-                x64_code_buffer[x64_code_offset] = (0x40 |
+                x64_code_buffer[x64_code_offset + x64_code_size] = (0x40 |
                     /* B */ (is_src_x64_32_register ? 0x01 : 0x00)
                 );
                 break;
             default:
 rex_common:
-                x64_code_buffer[x64_code_offset] = (0x40 |
+                x64_code_buffer[x64_code_offset + x64_code_size] = (0x40 |
                     /* R */ (is_dst_x64_32_register ? 0x04 : 0x00) |
                     /* B */ (is_src_x64_32_register ? 0x01 : 0x00)
                 );
                 break;
             }
+
+            ++x64_code_size;
         }
 
         switch (x64_op){
@@ -861,6 +773,11 @@ mod_rm_common:
         ++x64_code_size;
     }else{
 
+        if (is_dst_x64_32_register || is_src_x64_32_register){
+
+            ++x64_code_size;
+        }
+
         x64_code_size += 2;
 
         if ((TP_X64_IMUL == x64_op) && (false == is_dst_EAX_register)){
@@ -873,6 +790,27 @@ mod_rm_common:
             TP_PUT_LOG_MSG_ICE(symbol_table);
 
             return 0;
+        }
+    }
+
+    if (TP_X64_IDIV == x64_op){
+
+        if (is_use_EDX_register){
+
+            tmp_x64_code_size = encode_x64_pop_reg64(
+                symbol_table, x64_code_buffer, x64_code_offset + x64_code_size, TP_X64_64_REGISTER_RDX
+            );
+
+            TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
+        }
+
+        if (false == is_dst_EAX_register){
+
+            tmp_x64_code_size = encode_x64_pop_reg64(
+                symbol_table, x64_code_buffer, x64_code_offset + x64_code_size, TP_X64_64_REGISTER_RAX
+            );
+
+            TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
         }
     }
 
@@ -904,6 +842,7 @@ static uint32_t encode_x64_32_memory_offset_common(
     TP_X64 x64_op, TP_X64_DIRECTION x64_direction, TP_WASM_STACK_ELEMENT* dst, TP_WASM_STACK_ELEMENT* src)
 {
     uint32_t x64_code_size = 0;
+    uint32_t tmp_x64_code_size = 0;
 
     if ((TP_X64_ITEM_KIND_MEMORY != dst->member_x64_item_kind) &&
         (TP_X64_ITEM_KIND_MEMORY != src->member_x64_item_kind)){
@@ -935,6 +874,9 @@ static uint32_t encode_x64_32_memory_offset_common(
     bool is_dst_EAX_register = (is_dst_x86_32_register &&
         (TP_X86_32_REGISTER_EAX == dst->member_x64_item.member_x86_32_register)
     );
+    bool is_use_EDX_register = (TP_X64_ITEM_KIND_X86_32_REGISTER ==
+        symbol_table->member_use_X86_32_register[TP_X86_32_REGISTER_EDX].member_x64_item_kind
+    );
     bool is_dst_x64_32_register = (TP_X64_ITEM_KIND_X64_32_REGISTER == dst->member_x64_item_kind);
 
     bool is_src_x86_32_register = (TP_X64_ITEM_KIND_X86_32_REGISTER == src->member_x64_item_kind);
@@ -950,19 +892,38 @@ static uint32_t encode_x64_32_memory_offset_common(
         return 0;
     }
 
-    if ((false == is_dst_EAX_register) && (TP_X64_IDIV == x64_op)){
+    if (TP_X64_IDIV == x64_op){
 
-        TP_PUT_LOG_MSG(
-            symbol_table, TP_LOG_TYPE_DISP_FORCE, TP_MSG_FMT("%1"),
-            TP_LOG_PARAM_STRING("ERROR: (false == is_dst_EAX_register) && (TP_X64_IDIV == x64_op)")
+        if (false == is_dst_EAX_register){
+
+            tmp_x64_code_size = encode_x64_push_reg64(
+                symbol_table, x64_code_buffer, x64_code_offset + x64_code_size, TP_X64_64_REGISTER_RAX
+            );
+
+            TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
+        }
+
+        if (is_use_EDX_register){
+
+            tmp_x64_code_size = encode_x64_push_reg64(
+                symbol_table, x64_code_buffer, x64_code_offset + x64_code_size, TP_X64_64_REGISTER_RDX
+            );
+
+            TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
+        }
+
+        TP_WASM_STACK_ELEMENT edx_op = {
+            .member_wasm_opcode = TP_WASM_OPCODE_I32_VALUE,
+            .member_x64_item_kind = TP_X64_ITEM_KIND_X86_32_REGISTER,
+            .member_x64_item.member_x86_32_register = TP_X86_32_REGISTER_EDX
+        };
+
+        // xor edx, edx
+        tmp_x64_code_size = tp_encode_x64_2_operand(
+            symbol_table, x64_code_buffer, x64_code_offset + x64_code_size, TP_X64_XOR, &edx_op, &edx_op
         );
 
-        return 0;
-    }
-
-    if (is_dst_x64_32_register || is_src_x64_32_register){
-
-        ++x64_code_size;
+        TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
     }
 
     if (x64_code_buffer){
@@ -977,18 +938,20 @@ static uint32_t encode_x64_32_memory_offset_common(
                 }
 //              break;
             case TP_X64_IDIV:
-                x64_code_buffer[x64_code_offset] = (0x40 |
+                x64_code_buffer[x64_code_offset + x64_code_size] = (0x40 |
                     /* B */ (is_src_x64_32_register ? 0x01 : 0x00)
                 );
                 break;
             default:
 rex_common:
-                x64_code_buffer[x64_code_offset] = (0x40 |
+                x64_code_buffer[x64_code_offset + x64_code_size] = (0x40 |
                     /* R */ (is_dst_x64_32_register ? 0x04 : 0x00) |
                     /* B */ (is_src_x64_32_register ? 0x01 : 0x00)
                 );
                 break;
             }
+
+            ++x64_code_size;
         }
 
         switch (x64_op){
@@ -1102,6 +1065,11 @@ mod_rm_common:
         }
     }else{
 
+        if (is_dst_x64_32_register || is_src_x64_32_register){
+
+            ++x64_code_size;
+        }
+
         x64_code_size += 3;
 
         if ((TP_X64_IMUL == x64_op) && (false == is_dst_EAX_register)){
@@ -1122,6 +1090,27 @@ mod_rm_common:
         }else{
 
             x64_code_size += 4;
+        }
+    }
+
+    if (TP_X64_IDIV == x64_op){
+
+        if (is_use_EDX_register){
+
+            tmp_x64_code_size = encode_x64_pop_reg64(
+                symbol_table, x64_code_buffer, x64_code_offset + x64_code_size, TP_X64_64_REGISTER_RDX
+            );
+
+            TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
+        }
+
+        if (false == is_dst_EAX_register){
+
+            tmp_x64_code_size = encode_x64_pop_reg64(
+                symbol_table, x64_code_buffer, x64_code_offset + x64_code_size, TP_X64_64_REGISTER_RAX
+            );
+
+            TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
         }
     }
 
