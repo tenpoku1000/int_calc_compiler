@@ -579,6 +579,13 @@ uint32_t tp_encode_x64_2_operand(
 
             TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
 
+            tmp_x64_code_size = encode_x64_32_register_to_memory_offset(
+                symbol_table, x64_code_buffer, x64_code_offset + x64_code_size,
+                TP_X64_MOV, op1, &eax_op
+            );
+
+            TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
+
             tmp_x64_code_size = encode_x64_pop_reg64(
                 symbol_table, x64_code_buffer, x64_code_offset + x64_code_size, TP_X64_64_REGISTER_RAX
             );
