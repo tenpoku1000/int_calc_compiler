@@ -4,4 +4,4 @@
 
  @echo off
  setlocal
- set /p ch="press enter keyF"
+ set /p ch="press enter key:"
