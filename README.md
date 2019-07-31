@@ -13,10 +13,12 @@ C:\>echo.>int_calc_compiler-master.zip:Zone.Identifier
 
 ## 開発環境
 
-* Visual Studio Community 2017
+* Visual Studio Community 2019
 https://docs.microsoft.com/en-us/windows-hardware/drivers/download-the-wdk
+
 * Node.js
 https://nodejs.org/ja/
+
 * 64 ビット版 Windows 10
 
 ## コンパイル対象のソースコードの例と文法

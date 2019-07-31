@@ -97,7 +97,7 @@ uint32_t tp_encode_allocate_stack(
     {
         int32_t nv_register_bytes = 0;
 
-        for (int32_t i = TP_X64_NV64_REGISTER_NUM; TP_X64_NV64_REGISTER_NULL < i; --i){
+        for (int32_t i = TP_X64_NV64_REGISTER_NUM - 1; TP_X64_NV64_REGISTER_NULL < i; --i){
 
             switch (symbol_table->member_use_nv_register[i]){
             case TP_X64_NV64_REGISTER_NULL:
@@ -111,9 +111,9 @@ uint32_t tp_encode_allocate_stack(
             case TP_X64_NV64_REGISTER_R12:
 //              break;
             case TP_X64_NV64_REGISTER_R13:
-//                break;
+//              break;
             case TP_X64_NV64_REGISTER_R14:
-//                break;
+//              break;
             case TP_X64_NV64_REGISTER_R15:
                 // PUSH – Push Operand onto the Stack
                 x64_code_size += encode_x64_push_reg64(
