@@ -478,7 +478,7 @@ static bool wasm_stack_and_use_register_init(
     symbol_table->member_local_variable_size_max = TP_WASM_LOCAL_VARIABLE_MAX_DEFAULT;
     symbol_table->member_padding_local_variable_bytes = 0;
 
-    symbol_table->member_temporary_variable_size = 0;
+//  symbol_table->member_temporary_variable_size = 0;
     symbol_table->member_temporary_variable_size_max = TP_WASM_TEMPORARY_VARIABLE_MAX_DEFAULT;
     symbol_table->member_padding_temporary_variable_bytes = 0;
 
