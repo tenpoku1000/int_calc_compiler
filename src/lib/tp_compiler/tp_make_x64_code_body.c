@@ -1,5 +1,5 @@
 
-// Copyright (C) 2018, 2019 Shin'ichi Ichikawa. Released under the MIT license.
+// Copyright (C) 2018-2020 Shin'ichi Ichikawa. Released under the MIT license.
 
 #include "tp_compiler.h"
 
@@ -84,20 +84,23 @@ uint32_t tp_encode_allocate_stack(
         return 0;
     }
 
-    symbol_table->member_local_variable_size = (int32_t)local_variable_size;
+    uint32_t x64_code_size = 0;
 
-    symbol_table->member_padding_local_variable_bytes =
-        ((-(symbol_table->member_local_variable_size)) & TP_PADDING_MASK);
+    // Return Address
+    symbol_table->member_register_bytes = (int32_t)sizeof(uint64_t);
 
     // PUSH – Push Operand onto the Stack
-    uint32_t x64_code_size = encode_x64_push_reg64(
+    uint32_t tmp_x64_code_size = encode_x64_push_reg64(
         symbol_table, x64_code_buffer, x64_code_offset, TP_X64_64_REGISTER_RBP
     );
-
+    TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
     {
+        // RBP register.
+        symbol_table->member_register_bytes += (int32_t)sizeof(uint64_t);
+
         int32_t nv_register_bytes = 0;
 
-        for (int32_t i = TP_X64_NV64_REGISTER_NUM - 1; TP_X64_NV64_REGISTER_NULL < i; --i){
+        for (int32_t i = TP_X64_NV64_REGISTER_NUM - 1; 0 <= i; --i){
 
             switch (symbol_table->member_use_nv_register[i]){
             case TP_X64_NV64_REGISTER_NULL:
@@ -114,34 +117,54 @@ uint32_t tp_encode_allocate_stack(
 //              break;
             case TP_X64_NV64_REGISTER_R14:
 //              break;
-            case TP_X64_NV64_REGISTER_R15:
+            case TP_X64_NV64_REGISTER_R15:{
                 // PUSH – Push Operand onto the Stack
-                x64_code_size += encode_x64_push_reg64(
+                tmp_x64_code_size = encode_x64_push_reg64(
                     symbol_table, x64_code_buffer, x64_code_offset + x64_code_size,
                     (TP_X64_64_REGISTER)(symbol_table->member_use_nv_register[i])
                 );
+                TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
                 ++nv_register_bytes;
                 break;
+            }
             default:
                 TP_PUT_LOG_MSG_ICE(symbol_table);
                 return 0;
             }
-
-            symbol_table->member_register_bytes = nv_register_bytes * sizeof(uint64_t);
-
-            symbol_table->member_padding_register_bytes = ((-nv_register_bytes) & TP_PADDING_MASK);
         }
+
+        // Other non-volatile registers.
+        symbol_table->member_register_bytes += (nv_register_bytes * sizeof(uint64_t));
+
+        symbol_table->member_padding_register_bytes =
+            ((-(symbol_table->member_register_bytes)) & TP_PADDING_MASK);
     }
 
-    const int32_t stack_param_size = 32;
+    // Temporary variables(see tp_make_x64_code function).
+
+    // Local variables.
+    {
+        symbol_table->member_local_variable_size = (int32_t)local_variable_size;
+
+        int32_t v = symbol_table->member_register_bytes +
+            symbol_table->member_padding_register_bytes +
+            symbol_table->member_temporary_variable_size +
+            symbol_table->member_padding_temporary_variable_bytes +
+            symbol_table->member_local_variable_size;
+
+        symbol_table->member_padding_local_variable_bytes = ((-v) & TP_PADDING_MASK);
+    }
+
+    // Home space of function arguments register.
+    const int32_t stack_param_size = (int32_t)(sizeof(uint64_t) * 4);
 
     symbol_table->member_stack_imm32 =
-        symbol_table->member_local_variable_size +
-        symbol_table->member_padding_local_variable_bytes +
+//      symbol_table->member_register_bytes +
+        symbol_table->member_padding_register_bytes +
         symbol_table->member_temporary_variable_size +
         symbol_table->member_padding_temporary_variable_bytes +
-        symbol_table->member_register_bytes +
-        symbol_table->member_padding_register_bytes +
+        symbol_table->member_local_variable_size +
+        symbol_table->member_padding_local_variable_bytes +
         stack_param_size;
 
     if (x64_code_buffer){
@@ -150,38 +173,49 @@ uint32_t tp_encode_allocate_stack(
             symbol_table, TP_LOG_TYPE_HIDE,
             TP_MSG_FMT(
                 "sub rsp, imm32\n"
-                "symbol_table->member_stack_imm32: %1\n"
-                "symbol_table->member_local_variable_size: %2\n"
-                "symbol_table->member_padding_local_variable_bytes: %3\n"
+                "symbol_table->member_stack_imm32(member_register_bytes is not included): %1\n"
+                "symbol_table->member_register_bytes: %2\n"
+                "symbol_table->member_padding_register_bytes: %3\n"
                 "symbol_table->member_temporary_variable_size: %4\n"
                 "symbol_table->member_padding_temporary_variable_bytes: %5\n"
-                "symbol_table->member_register_bytes: %6\n"
-                "symbol_table->member_padding_register_bytes: %7\n"
+                "symbol_table->member_local_variable_size: %6\n"
+                "symbol_table->member_padding_local_variable_bytes: %7\n"
                 "stack_param_size: %8"
             ),
             TP_LOG_PARAM_INT32_VALUE(symbol_table->member_stack_imm32),
-            TP_LOG_PARAM_INT32_VALUE(symbol_table->member_local_variable_size),
-            TP_LOG_PARAM_INT32_VALUE(symbol_table->member_padding_local_variable_bytes),
-            TP_LOG_PARAM_INT32_VALUE(symbol_table->member_temporary_variable_size),
-            TP_LOG_PARAM_INT32_VALUE(symbol_table->member_padding_temporary_variable_bytes),
             TP_LOG_PARAM_INT32_VALUE(symbol_table->member_register_bytes),
             TP_LOG_PARAM_INT32_VALUE(symbol_table->member_padding_register_bytes),
+            TP_LOG_PARAM_INT32_VALUE(symbol_table->member_temporary_variable_size),
+            TP_LOG_PARAM_INT32_VALUE(symbol_table->member_padding_temporary_variable_bytes),
+            TP_LOG_PARAM_INT32_VALUE(symbol_table->member_local_variable_size),
+            TP_LOG_PARAM_INT32_VALUE(symbol_table->member_padding_local_variable_bytes),
             TP_LOG_PARAM_INT32_VALUE(stack_param_size)
         );
     }
 
     // SUB – Integer Subtraction
-    x64_code_size += encode_x64_add_sub_imm(
+    tmp_x64_code_size = encode_x64_add_sub_imm(
         symbol_table, x64_code_buffer, x64_code_offset + x64_code_size,
         TP_X64_SUB, TP_X64_64_REGISTER_RSP, symbol_table->member_stack_imm32, TP_X64_ADD_SUB_IMM_MODE_FORCE_IMM32
     );
+    TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
+
     // LEA - Load Effective Address
     // lea rbp, QWORD PTR [rsp+32]
-    x64_code_size += encode_x64_lea(
+    tmp_x64_code_size = encode_x64_lea(
         symbol_table, x64_code_buffer, x64_code_offset + x64_code_size,
         TP_X64_64_REGISTER_RBP, TP_X64_64_REGISTER_INDEX_NONE,
         TP_X64_64_REGISTER_RSP, stack_param_size
     );
+    TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
+
+//  // int 3
+//  if (x64_code_buffer){
+//
+//      x64_code_buffer[x64_code_offset + x64_code_size] = 0xcc;
+//  }
+//
+//  ++x64_code_size;
 
     return x64_code_size;
 }
@@ -286,24 +320,19 @@ uint32_t tp_encode_tee_local_code(
     TP_SYMBOL_TABLE* symbol_table, uint8_t* x64_code_buffer, uint32_t x64_code_offset,
     uint32_t local_index, TP_WASM_STACK_ELEMENT* op1)
 {
-    uint32_t x64_code_size = tp_encode_set_local_code(
+    uint32_t x64_code_size = 0;
+
+    uint32_t tmp_x64_code_size = tp_encode_set_local_code(
         symbol_table, x64_code_buffer, x64_code_offset,
         local_index, op1
     );
+    TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
 
-    if (0 == x64_code_size){
-
-        TP_PUT_LOG_MSG_TRACE(symbol_table);
-
-        return 0;
-    }
-
-    if ( ! tp_wasm_stack_push(symbol_table, op1)){
-
-        TP_PUT_LOG_MSG_TRACE(symbol_table);
-
-        return 0;
-    }
+    tmp_x64_code_size = tp_encode_get_local_code(
+        symbol_table, x64_code_buffer, x64_code_offset + x64_code_size,
+        local_index
+    );
+    TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
 
     return x64_code_size;
 }

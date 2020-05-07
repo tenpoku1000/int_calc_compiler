@@ -756,9 +756,9 @@ static bool is_valid_utf_8(TP_SYMBOL_TABLE* symbol_table, uint8_t* lines_buffer,
 
         if (is_lead_byte_zero){
 
-	        for (size_t j = i + 1; subsequent_bytes > j; ++j){
+            for (size_t j = i + 1; subsequent_bytes > j; ++j){
 
-	            if ((subsequent_bytes - 1) == j){
+                if ((subsequent_bytes - 1) == j){
 
                     // Is bad ascii.
 
@@ -769,14 +769,14 @@ static bool is_valid_utf_8(TP_SYMBOL_TABLE* symbol_table, uint8_t* lines_buffer,
                     );
 
                     return false;
-	            }else{
+                }else{
 
-	                if ((uint8_t)0x00 != (p[j] & 0x3F)){
+                    if ((uint8_t)0x00 != (p[j] & 0x3F)){
 
-	                    break;
-	                }
-	            }
-	        }
+                        break;
+                    }
+                }
+            }
         }
 
         i += total_bytes - 1;

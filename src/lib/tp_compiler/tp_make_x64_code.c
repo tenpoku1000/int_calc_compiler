@@ -1,5 +1,5 @@
 
-// Copyright (C) 2018, 2019 Shin'ichi Ichikawa. Released under the MIT license.
+// Copyright (C) 2018-2020 Shin'ichi Ichikawa. Released under the MIT license.
 
 #include "tp_compiler.h"
 
@@ -166,6 +166,11 @@ bool tp_make_x64_code(TP_SYMBOL_TABLE* symbol_table, int32_t* return_value)
 {
     uint8_t* x64_code_buffer = NULL;
 
+    memset(
+        symbol_table->member_use_nv_register,
+        TP_X64_NV64_REGISTER_NULL, sizeof(symbol_table->member_use_nv_register)
+    );
+
     uint32_t x64_code_buffer_size1 = convert_section_code_content2x64(symbol_table, NULL);
 
     if (0 == x64_code_buffer_size1){
@@ -176,6 +181,14 @@ bool tp_make_x64_code(TP_SYMBOL_TABLE* symbol_table, int32_t* return_value)
         );
 
         goto convert_error;
+    }
+
+    for (rsize_t i = 0; TP_X64_NV64_REGISTER_NUM > i; ++i){
+
+        if (TP_X64_NV64_REGISTER_NULL != symbol_table->member_use_nv_register[i]){
+
+            ++x64_code_buffer_size1;
+        }
     }
 
     x64_code_buffer = (uint8_t*)VirtualAlloc(
@@ -190,8 +203,14 @@ bool tp_make_x64_code(TP_SYMBOL_TABLE* symbol_table, int32_t* return_value)
         goto convert_error;
     }
 
-    symbol_table->member_padding_temporary_variable_bytes =
-        ((-(symbol_table->member_temporary_variable_size)) & TP_PADDING_MASK);
+    // Temporary variables.
+    {
+        int32_t v = symbol_table->member_register_bytes +
+            symbol_table->member_padding_register_bytes +
+            symbol_table->member_temporary_variable_size;
+
+        symbol_table->member_padding_temporary_variable_bytes = ((-v) & TP_PADDING_MASK);
+    }
 
     uint32_t x64_code_buffer_size2 = convert_section_code_content2x64(symbol_table, x64_code_buffer);
 
