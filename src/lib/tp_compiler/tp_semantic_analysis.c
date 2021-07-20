@@ -1,5 +1,5 @@
 
-// Copyright (C) 2018 Shin'ichi Ichikawa. Released under the MIT license.
+// (C) Shin'ichi Ichikawa. Released under the MIT license.
 
 #include "tp_compiler.h"
 
@@ -405,7 +405,7 @@ static bool register_object_hash_element(
 
     REGISTER_OBJECT_HASH_ELEMENT* next = (REGISTER_OBJECT_HASH_ELEMENT*)(hash_element->member_next);
 
-    if (NULL == next) {
+    if (NULL == next){
 
         next = (REGISTER_OBJECT_HASH_ELEMENT*)calloc(sizeof(REGISTER_OBJECT_HASH_ELEMENT), 1);
 
@@ -495,7 +495,7 @@ static bool dump_object_hash_main(
             }
         }
 
-        for (size_t j = 0; max_size > j; ++j) {
+        for (size_t j = 0; max_size > j; ++j){
 
             SAME_HASH_DATA* same_hash_data = &(hash_element[i].member_sama_hash_data[j]);
 

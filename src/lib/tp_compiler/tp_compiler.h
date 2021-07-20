@@ -1,5 +1,5 @@
 
-// Copyright (C) 2018 Shin'ichi Ichikawa. Released under the MIT license.
+// (C) Shin'ichi Ichikawa. Released under the MIT license.
 
 #if ! defined(INT_CALC_COMPILER_H_)
 #define INT_CALC_COMPILER_H_
@@ -534,15 +534,24 @@ typedef enum tp_x64_direction_{
 
 typedef struct symbol_table_{
 // config section:
+    // TP_CONFIG_OPTION_IS_OUTPUT_CURRENT_DIR 'c'
     bool member_is_output_current_dir;
+    // TP_CONFIG_OPTION_IS_OUTPUT_LOG_FILE 'l'
     bool member_is_output_log_file;
+    // TP_CONFIG_OPTION_IS_NO_OUTPUT_MESSAGES 'm'
     bool member_is_no_output_messages;
+    // TP_CONFIG_OPTION_IS_NO_OUTPUT_FILES 'n'
     bool member_is_no_output_files;
+    // TP_CONFIG_OPTION_IS_ORIGIN_WASM 'r'
     bool member_is_origin_wasm;
+    // TP_CONFIG_OPTION_IS_SOURCE_CMD_PARAM 's'
     bool member_is_source_cmd_param;
     uint8_t member_source_code[TP_SOURCE_CODE_STRING_BUFFER_SIZE];
+    // TP_CONFIG_OPTION_IS_TEST_MODE 't'
     bool member_is_test_mode;
+    // TP_CONFIG_OPTION_IS_OUTPUT_WASM_FILE 'w'
     bool member_is_output_wasm_file;
+    // TP_CONFIG_OPTION_IS_OUTPUT_X64_FILE 'x'
     bool member_is_output_x64_file;
 
 // message section:
@@ -572,10 +581,10 @@ typedef struct symbol_table_{
     uint8_t* member_read_lines_end_position;
 
 // token section:
+    TP_TOKEN* member_tp_token; // member_string is allways NULL.
     rsize_t member_tp_token_pos;
     rsize_t member_tp_token_size;
     rsize_t member_tp_token_size_allocate_unit;
-    TP_TOKEN* member_tp_token;
     TP_TOKEN* member_tp_token_position;
     rsize_t member_nul_num;
 
@@ -613,6 +622,8 @@ typedef struct symbol_table_{
     int32_t member_stack_size;
     int32_t member_stack_size_allocate_unit;
 
+    int32_t member_last_padding_bytes; // Zero or 8 bytes.
+
     int32_t member_local_variable_size;
     int32_t member_local_variable_size_max;
     int32_t member_padding_local_variable_bytes;
@@ -631,16 +642,24 @@ typedef struct symbol_table_{
     int32_t member_stack_imm32;
 }TP_SYMBOL_TABLE;
 
+// ----------------------------------------------------------------------------------------
+// Main section:
 bool tp_compiler(int argc, char** argv, uint8_t* msg_buffer, size_t msg_buffer_size);
 
+// ----------------------------------------------------------------------------------------
+// token section:
 bool tp_make_token(TP_SYMBOL_TABLE* symbol_table, uint8_t* string, rsize_t string_length);
 bool tp_dump_token_main(
     TP_SYMBOL_TABLE* symbol_table, FILE* write_file, TP_TOKEN* token, uint8_t indent_level
 );
 
+// ----------------------------------------------------------------------------------------
+// parse tree section:
 bool tp_make_parse_tree(TP_SYMBOL_TABLE* symbol_table);
 void tp_free_parse_subtree(TP_SYMBOL_TABLE* symbol_table, TP_PARSE_TREE** parse_subtree);
 
+// ----------------------------------------------------------------------------------------
+// semantic analysis section:
 bool tp_semantic_analysis(TP_SYMBOL_TABLE* symbol_table);
 bool tp_search_object(TP_SYMBOL_TABLE* symbol_table, TP_TOKEN* token, REGISTER_OBJECT* register_object);
 void tp_free_object_hash(
@@ -648,8 +667,14 @@ void tp_free_object_hash(
     REGISTER_OBJECT_HASH* object_hash, REGISTER_OBJECT_HASH_ELEMENT* hash_element
 );
 
+
+// ----------------------------------------------------------------------------------------
+// wasm section:
 bool tp_make_wasm(TP_SYMBOL_TABLE* symbol_table, bool is_origin_wasm);
 
+
+// ----------------------------------------------------------------------------------------
+// x64 section:
 bool tp_make_x64_code(TP_SYMBOL_TABLE* symbol_table, int32_t* return_value);
 bool tp_wasm_stack_push(TP_SYMBOL_TABLE* symbol_table, TP_WASM_STACK_ELEMENT* value);
 bool tp_get_local_variable_offset(
@@ -665,6 +690,9 @@ uint32_t tp_encode_allocate_stack(
     TP_SYMBOL_TABLE* symbol_table, uint8_t* x64_code_buffer, uint32_t x64_code_offset,
     uint32_t var_count, uint32_t var_type
 );
+
+// Variable access
+
 uint32_t tp_encode_get_local_code(
     TP_SYMBOL_TABLE* symbol_table, uint8_t* x64_code_buffer, uint32_t x64_code_offset, uint32_t local_index
 );
@@ -676,9 +704,15 @@ uint32_t tp_encode_tee_local_code(
     TP_SYMBOL_TABLE* symbol_table, uint8_t* x64_code_buffer, uint32_t x64_code_offset, uint32_t local_index,
     TP_WASM_STACK_ELEMENT* op1
 );
+
+// Constants
+
 uint32_t tp_encode_i32_const_code(
     TP_SYMBOL_TABLE* symbol_table, uint8_t* x64_code_buffer, uint32_t x64_code_offset, int32_t value
 );
+
+// Numeric operators(i32)
+
 uint32_t tp_encode_i32_add_code(
     TP_SYMBOL_TABLE* symbol_table, uint8_t* x64_code_buffer, uint32_t x64_code_offset,
     TP_WASM_STACK_ELEMENT* op1, TP_WASM_STACK_ELEMENT* op2
@@ -700,23 +734,36 @@ uint32_t tp_encode_i32_xor_code(
     TP_WASM_STACK_ELEMENT* op1, TP_WASM_STACK_ELEMENT* op2
 );
 uint32_t tp_encode_end_code(TP_SYMBOL_TABLE* symbol_table, uint8_t* x64_code_buffer, uint32_t x64_code_offset);
+
+// x64 Assembly
+
 uint32_t tp_encode_x64_2_operand(
     TP_SYMBOL_TABLE* symbol_table, uint8_t* x64_code_buffer, uint32_t x64_code_offset,
     TP_X64 x64_op, TP_WASM_STACK_ELEMENT* op1, TP_WASM_STACK_ELEMENT* op2
 );
 
+
+// ----------------------------------------------------------------------------------------
+// Utilities section:
+
+// File
 bool tp_open_read_file(TP_SYMBOL_TABLE* symbol_table, char* path, FILE** file_stream);
+bool tp_open_read_file_text(TP_SYMBOL_TABLE* symbol_table, char* path, FILE** file_stream);
 bool tp_open_write_file(TP_SYMBOL_TABLE* symbol_table, char* path, FILE** file_stream);
+bool tp_open_write_file_text(TP_SYMBOL_TABLE* symbol_table, char* path, FILE** file_stream);
 bool tp_ftell(TP_SYMBOL_TABLE* symbol_table, FILE* file_stream, long* seek_position);
 bool tp_seek(TP_SYMBOL_TABLE* symbol_table, FILE* file_stream, long seek_position, long line_bytes);
 bool tp_close_file(TP_SYMBOL_TABLE* symbol_table, FILE** file_stream);
 bool tp_write_file(TP_SYMBOL_TABLE* symbol_table, char* path, void* content, uint32_t content_size);
 
+// LEB128
 uint32_t tp_encode_si64leb128(uint8_t* buffer, size_t offset, int64_t value);
 uint32_t tp_encode_ui32leb128(uint8_t* buffer, size_t offset, uint32_t value);
+int64_t tp_decode_si64leb128(uint8_t* buffer, uint32_t* size);
 int32_t tp_decode_si32leb128(uint8_t* buffer, uint32_t* size);
 uint32_t tp_decode_ui32leb128(uint8_t* buffer, uint32_t* size);
 
+// Utilities
 void tp_free(TP_SYMBOL_TABLE* symbol_table, void** ptr, size_t size, uint8_t* file, uint8_t* func, size_t line_num);
 void tp_free2(TP_SYMBOL_TABLE* symbol_table, void*** ptr, size_t size, uint8_t* file, uint8_t* func, size_t line_num);
 void tp_get_last_error(TP_SYMBOL_TABLE* symbol_table, uint8_t* file, uint8_t* func, size_t line_num);

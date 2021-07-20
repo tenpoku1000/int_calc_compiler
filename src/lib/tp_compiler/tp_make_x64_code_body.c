@@ -1,5 +1,5 @@
 
-// Copyright (C) 2018-2020 Shin'ichi Ichikawa. Released under the MIT license.
+// (C) Shin'ichi Ichikawa. Released under the MIT license.
 
 #include "tp_compiler.h"
 
@@ -86,6 +86,15 @@ uint32_t tp_encode_allocate_stack(
 
     uint32_t x64_code_size = 0;
 
+#if TP_DEBUG_BREAK
+    // int 3
+    if (x64_code_buffer){
+ 
+        x64_code_buffer[x64_code_offset + x64_code_size] = 0xcc;
+    }
+
+    ++x64_code_size;
+#endif
     // Return Address
     symbol_table->member_register_bytes = (int32_t)sizeof(uint64_t);
 
@@ -98,6 +107,7 @@ uint32_t tp_encode_allocate_stack(
         // RBP register.
         symbol_table->member_register_bytes += (int32_t)sizeof(uint64_t);
 
+        // Other non-volatile registers.
         int32_t nv_register_bytes = 0;
 
         for (int32_t i = TP_X64_NV64_REGISTER_NUM - 1; 0 <= i; --i){
@@ -133,7 +143,6 @@ uint32_t tp_encode_allocate_stack(
             }
         }
 
-        // Other non-volatile registers.
         symbol_table->member_register_bytes += (nv_register_bytes * sizeof(uint64_t));
 
         symbol_table->member_padding_register_bytes =
@@ -167,6 +176,13 @@ uint32_t tp_encode_allocate_stack(
         symbol_table->member_padding_local_variable_bytes +
         stack_param_size;
 
+    // Last padding bytes.
+    if (0 == ((symbol_table->member_stack_imm32) % 16)){
+
+        symbol_table->member_last_padding_bytes = sizeof(uint64_t);
+        symbol_table->member_stack_imm32 += sizeof(uint64_t);
+    }
+
     if (x64_code_buffer){
 
         TP_PUT_LOG_MSG(
@@ -180,7 +196,8 @@ uint32_t tp_encode_allocate_stack(
                 "symbol_table->member_padding_temporary_variable_bytes: %5\n"
                 "symbol_table->member_local_variable_size: %6\n"
                 "symbol_table->member_padding_local_variable_bytes: %7\n"
-                "stack_param_size: %8"
+                "symbol_table->member_last_padding_bytes: %8\n"
+                "stack_param_size: %9"
             ),
             TP_LOG_PARAM_INT32_VALUE(symbol_table->member_stack_imm32),
             TP_LOG_PARAM_INT32_VALUE(symbol_table->member_register_bytes),
@@ -189,6 +206,7 @@ uint32_t tp_encode_allocate_stack(
             TP_LOG_PARAM_INT32_VALUE(symbol_table->member_padding_temporary_variable_bytes),
             TP_LOG_PARAM_INT32_VALUE(symbol_table->member_local_variable_size),
             TP_LOG_PARAM_INT32_VALUE(symbol_table->member_padding_local_variable_bytes),
+            TP_LOG_PARAM_INT32_VALUE(symbol_table->member_last_padding_bytes),
             TP_LOG_PARAM_INT32_VALUE(stack_param_size)
         );
     }
@@ -209,13 +227,15 @@ uint32_t tp_encode_allocate_stack(
     );
     TP_X64_CHECK_CODE_SIZE(symbol_table, x64_code_size, tmp_x64_code_size);
 
-//  // int 3
-//  if (x64_code_buffer){
-//
-//      x64_code_buffer[x64_code_offset + x64_code_size] = 0xcc;
-//  }
-//
-//  ++x64_code_size;
+#if TP_DEBUG_BREAK
+    // int 3
+    if (x64_code_buffer){
+
+        x64_code_buffer[x64_code_offset + x64_code_size] = 0xcc;
+    }
+
+    ++x64_code_size;
+#endif
 
     return x64_code_size;
 }

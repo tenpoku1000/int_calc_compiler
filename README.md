@@ -47,7 +47,7 @@ Note:
 
 * 実行用コマンド・ファイル(int_calc.cmd)を実行すると、ソースコード(source.txt)がコンパイルされ、x64 の機械語と WebAssembly の実行結果が出力されます。
 
-![screen shot](https://raw.githubusercontent.com/tenpoku1000/int_calc_compiler/master/images/README.PNG)
+![screen shot](images/README.PNG)
 
 * テスト実行用コマンド・ファイル(test_int_calc.cmd)を実行すると自動テストが実行され、スナップショット格納フォルダ(test_YYYY-MM-DD_nnn)にテスト結果が出力されます。
 * プログラム本体(int_calc_compiler.exe)を実行すると、コマンドライン引数の説明が表示されます。
@@ -80,16 +80,16 @@ Note:
 
 * int_calc_compiler.sln ファイルをダブルクリックします。
 * ゾーン情報を削除していない場合は、Visual Studio のセキュリティ警告を回避してプロジェクトを開きます。  
-![warning](https://raw.githubusercontent.com/tenpoku1000/int_calc_compiler/master/images/MSVC.PNG)
+![warning](images/MSVC.PNG)
 * F7 キーを押下します。
 
 ビルド後に tools フォルダに存在するファイルが、bin フォルダにコピーされます。
 
 ## ライセンス
 
-[MIT license](https://raw.githubusercontent.com/tenpoku1000/int_calc_compiler/master/LICENSE)
+[MIT license](LICENSE)
 
 ## 作者
 
-市川 真一 <suigun1000@gmail.com>
+市川 真一(Shin'ichi Ichikawa) <tenpoku1000@outlook.com>
 

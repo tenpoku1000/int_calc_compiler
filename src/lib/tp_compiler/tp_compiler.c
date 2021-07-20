@@ -1,19 +1,28 @@
 
-// Copyright (C) 2018 Shin'ichi Ichikawa. Released under the MIT license.
+// (C) Shin'ichi Ichikawa. Released under the MIT license.
 
 #include "tp_compiler.h"
 
 static TP_SYMBOL_TABLE init_symbol_table_value = {
 // config section:
+    // TP_CONFIG_OPTION_IS_OUTPUT_CURRENT_DIR 'c'
     .member_is_output_current_dir = false,
+    // TP_CONFIG_OPTION_IS_OUTPUT_LOG_FILE 'l'
     .member_is_output_log_file = false,
+    // TP_CONFIG_OPTION_IS_NO_OUTPUT_MESSAGES 'm'
     .member_is_no_output_messages = false,
+    // TP_CONFIG_OPTION_IS_NO_OUTPUT_FILES 'n'
     .member_is_no_output_files = false,
+    // TP_CONFIG_OPTION_IS_ORIGIN_WASM 'r'
     .member_is_origin_wasm = false,
+    // TP_CONFIG_OPTION_IS_SOURCE_CMD_PARAM 's'
     .member_is_source_cmd_param = false,
     .member_source_code = { 0 },
+    // TP_CONFIG_OPTION_IS_TEST_MODE 't'
     .member_is_test_mode = false,
+    // TP_CONFIG_OPTION_IS_OUTPUT_WASM_FILE 'w'
     .member_is_output_wasm_file = false,
+    // TP_CONFIG_OPTION_IS_OUTPUT_X64_FILE 'x'
     .member_is_output_x64_file = false,
 
 // message section:
@@ -105,6 +114,8 @@ static TP_SYMBOL_TABLE init_symbol_table_value = {
     .member_stack_pos = TP_WASM_STACK_EMPTY,
     .member_stack_size = 0,
     .member_stack_size_allocate_unit = TP_WASM_STACK_SIZE_ALLOCATE_UNIT,
+
+    .member_last_padding_bytes = 0,
 
     .member_local_variable_size = 0,
     .member_local_variable_size_max = TP_WASM_LOCAL_VARIABLE_MAX_DEFAULT,
@@ -475,7 +486,9 @@ static bool init_symbol_table(
 
     if (0 != setvbuf(symbol_table->member_disp_log_file, msg_buffer, _IOFBF, msg_buffer_size)){
 
-        goto error_out;
+        TP_PRINT_CRT_ERROR(NULL);
+
+        return false;
     }
 
     symbol_table->member_grammer_statement_1_num = calc_grammer_type_num(symbol_table, TP_GRAMMER_TYPE_INDEX_STATEMENT_1);
@@ -488,9 +501,16 @@ static bool init_symbol_table(
     symbol_table->member_grammer_factor_2_num = calc_grammer_type_num(symbol_table, TP_GRAMMER_TYPE_INDEX_FACTOR_2);
     symbol_table->member_grammer_factor_3_num = calc_grammer_type_num(symbol_table, TP_GRAMMER_TYPE_INDEX_FACTOR_3);
 
+    if (NULL == is_test){
+
+        TP_PUT_LOG_MSG_ICE(NULL);
+
+        return false;
+    }
+
     bool is_normal = false;
 
-    if (is_test && (false == *is_test)){
+    if (false == *is_test){
 
         is_normal = true;
     }
@@ -500,7 +520,7 @@ static bool init_symbol_table(
         return false;
     }
 
-    if (is_test && *is_test && is_normal){
+    if (*is_test && is_normal){
 
         // switch to test mode.
         return true;
@@ -928,7 +948,7 @@ static bool parse_cmd_line_param(
 
             if (command_line_param){
 
-                goto error_out;
+                goto fail;
             }else{
 
                 command_line_param = param;
@@ -940,37 +960,37 @@ static bool parse_cmd_line_param(
             for (int j = 1; length > j; ++j){
 
                 switch (param[j]){
-                case TP_CONFIG_OPTION_IS_OUTPUT_CURRENT_DIR:
+                case TP_CONFIG_OPTION_IS_OUTPUT_CURRENT_DIR: // -c
                     symbol_table->member_is_output_current_dir = true;
                     break;
-                case TP_CONFIG_OPTION_IS_OUTPUT_LOG_FILE:
+                case TP_CONFIG_OPTION_IS_OUTPUT_LOG_FILE: // -l
                     symbol_table->member_is_output_log_file = true;
                     break;
-                case TP_CONFIG_OPTION_IS_NO_OUTPUT_MESSAGES:
+                case TP_CONFIG_OPTION_IS_NO_OUTPUT_MESSAGES: // -m
                     symbol_table->member_is_no_output_messages = true;
                     break;
-                case TP_CONFIG_OPTION_IS_NO_OUTPUT_FILES:
+                case TP_CONFIG_OPTION_IS_NO_OUTPUT_FILES: // -n
                     symbol_table->member_is_no_output_files = true;
                     break;
-                case TP_CONFIG_OPTION_IS_ORIGIN_WASM:
+                case TP_CONFIG_OPTION_IS_ORIGIN_WASM: // -r
                     symbol_table->member_is_origin_wasm = true;
                     break;
-                case TP_CONFIG_OPTION_IS_SOURCE_CMD_PARAM:
+                case TP_CONFIG_OPTION_IS_SOURCE_CMD_PARAM: // -s
                     symbol_table->member_is_source_cmd_param = true;
                     break;
-                case TP_CONFIG_OPTION_IS_TEST_MODE:
+                case TP_CONFIG_OPTION_IS_TEST_MODE: // -t
                     *is_test = true;
                     symbol_table->member_is_test_mode = true;
                     symbol_table->member_is_output_log_file = true;
                     break;
-                case TP_CONFIG_OPTION_IS_OUTPUT_WASM_FILE:
+                case TP_CONFIG_OPTION_IS_OUTPUT_WASM_FILE: // -w
                     symbol_table->member_is_output_wasm_file = true;
                     break;
-                case TP_CONFIG_OPTION_IS_OUTPUT_X64_FILE:
+                case TP_CONFIG_OPTION_IS_OUTPUT_X64_FILE: // -x
                     symbol_table->member_is_output_x64_file = true;
                     break;
                 default:
-                    goto error_out;
+                    goto fail;
                 }
             }
         }
@@ -979,21 +999,21 @@ static bool parse_cmd_line_param(
     if (command_line_param &&
         (symbol_table->member_is_origin_wasm || symbol_table->member_is_test_mode)){
 
-        goto error_out;
+        goto fail;
     }
 
     if ((NULL == command_line_param) && (1 == argc)){
 
-        goto error_out;
+        goto fail;
     }
 
     if (symbol_table->member_is_source_cmd_param){
 
-        size_t length = strlen(command_line_param);
+        size_t length = (command_line_param ? strlen(command_line_param) : 0);
 
         if (TP_SOURCE_CODE_STRING_LENGTH_MAX < length){
 
-            goto error_out;
+            goto fail;
         }
 
         sprintf_s(
@@ -1018,7 +1038,7 @@ static bool parse_cmd_line_param(
 
     return true;
 
-error_out:
+fail:
 
     *is_disp_usage = true;
 
@@ -1027,7 +1047,7 @@ error_out:
     fprintf_s(stderr, "  -l : set output log file.\n");
     fprintf_s(stderr, "  -m : set no output messages.\n");
     fprintf_s(stderr, "  -n : set no output files.\n");
-    fprintf_s(stderr, "  -r : set origin WASM. [input file] is not necessary.\n");
+    fprintf_s(stderr, "  -r : set origin wasm. [input file] is not necessary.\n");
     fprintf_s(stderr, "  -s : set source code command line parameter mode.\n");
     fprintf_s(
         stderr,
@@ -1035,7 +1055,7 @@ error_out:
         TP_SOURCE_CODE_STRING_LENGTH_MAX
     );
     fprintf_s(stderr, "  -t : set test mode. [input file] is not necessary.\n");
-    fprintf_s(stderr, "  -w : set output WASM file.\n");
+    fprintf_s(stderr, "  -w : set output wasm file.\n");
     fprintf_s(stderr, "  -x : set output x64 file.\n");
 
     err = _set_errno(0);
@@ -1070,7 +1090,7 @@ static void free_memory_and_file(TP_SYMBOL_TABLE** symbol_table)
 
         for (size_t i = 0; wasm_module->member_section_num > i; ++i){
 
-            if (section[i]) {
+            if (section[i]){
 
                 TP_FREE(*symbol_table, &(section[i]->member_name_len_name_payload_data), section[i]->member_section_size);
 

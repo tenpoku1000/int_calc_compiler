@@ -1,10 +1,11 @@
-C:\Users\tenpo\source\repos\int_calc_compiler\src\lib\tp_compiler\tp_make_parse_tree.c(427): TRACE: parse_statement function
-C:\Users\tenpo\source\repos\int_calc_compiler\src\lib\tp_compiler\tp_make_x64_code_body.c(193): sub rsp, imm32
-symbol_table->member_stack_imm32(member_register_bytes is not included): 80
+tp_make_parse_tree.c(427): TRACE: parse_statement function
+tp_make_x64_code_body.c(211): sub rsp, imm32
+symbol_table->member_stack_imm32(member_register_bytes is not included): 88
 symbol_table->member_register_bytes: 16
 symbol_table->member_padding_register_bytes: 0
 symbol_table->member_temporary_variable_size: 36
 symbol_table->member_padding_temporary_variable_bytes: 0
 symbol_table->member_local_variable_size: 8
 symbol_table->member_padding_local_variable_bytes: 4
+symbol_table->member_last_padding_bytes: 8
 stack_param_size: 32

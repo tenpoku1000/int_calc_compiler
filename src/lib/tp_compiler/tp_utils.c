@@ -1,5 +1,5 @@
 
-// Copyright (C) 2018 Shin'ichi Ichikawa. Released under the MIT license.
+// (C) Shin'ichi Ichikawa. Released under the MIT license.
 
 #include "tp_compiler.h"
 
@@ -33,26 +33,32 @@ static bool write_param_log_msg(
 #pragma optimize("", off)
 void tp_free(TP_SYMBOL_TABLE* symbol_table, void** ptr, size_t size, uint8_t* file, uint8_t* func, size_t line_num)
 {
-    if (ptr && size){
+    if (ptr && (*ptr)){
 
-        memset(*ptr, 0, size);
+        if (size){
+
+            memset(*ptr, 0, size);
+        }
+
+        free(*ptr);
+        *ptr = NULL;
     }
-
-    free(*ptr);
-    *ptr = NULL;
 
     tp_print_crt_error(symbol_table, file, func, line_num);
 }
 
 void tp_free2(TP_SYMBOL_TABLE* symbol_table, void*** ptr, size_t size, uint8_t* file, uint8_t* func, size_t line_num)
 {
-    if (ptr && size) {
+    if (ptr && (*ptr)){
 
-        memset(*ptr, 0, size);
+        if (size){
+
+            memset(*ptr, 0, size);
+        }
+
+        free(*ptr);
+        *ptr = NULL;
     }
-
-    free(*ptr);
-    *ptr = NULL;
 
     tp_print_crt_error(symbol_table, file, func, line_num);
 }
@@ -62,14 +68,14 @@ void tp_get_last_error(TP_SYMBOL_TABLE* symbol_table, uint8_t* file, uint8_t* fu
 {
     LPVOID msg_buffer = NULL;
 
-    FormatMessage(
+    FormatMessageA(
         FORMAT_MESSAGE_ALLOCATE_BUFFER |
         FORMAT_MESSAGE_FROM_SYSTEM |
         FORMAT_MESSAGE_IGNORE_INSERTS,
         NULL,
         GetLastError(),
         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-        (LPTSTR) &msg_buffer,
+        (LPSTR)&msg_buffer,
         0,
         NULL
     );
@@ -97,8 +103,7 @@ void tp_print_crt_error(TP_SYMBOL_TABLE* symbol_table, uint8_t* file, uint8_t* f
 {
     if (errno){
 
-        char msg_buffer[TP_MESSAGE_BUFFER_SIZE];
-        memset(msg_buffer, 0, sizeof(msg_buffer));
+        char msg_buffer[TP_MESSAGE_BUFFER_SIZE] = { 0 };
 
         errno_t err = strerror_s(msg_buffer, sizeof(msg_buffer), errno);
 
@@ -136,14 +141,35 @@ bool tp_put_log_msg(
         is_disp = false;
     }
 
+    uint8_t file_name[_MAX_PATH] = { 0 };
+
+    char fname[_MAX_FNAME] = { 0 };
+    char ext[_MAX_EXT] = { 0 };
+
+    errno_t err = _splitpath_s(file, NULL, 0, NULL, 0, fname, _MAX_FNAME, ext, _MAX_EXT);
+
+    if (err){
+
+        sprintf_s(file_name, sizeof(file_name), "%s", file);
+    }else{
+
+        if (ext[0]){
+
+            sprintf_s(file_name, sizeof(file_name), "%s%s", fname, ext);
+        }else{
+
+            sprintf_s(file_name, sizeof(file_name), "%s", fname);
+        }
+    }
+
     if (is_disp){
 
-        fprintf(symbol_table->member_disp_log_file, "%s(%zd): ", file, line_num);
+        fprintf(symbol_table->member_disp_log_file, "%s(%zd): ", file_name, line_num);
     }
 
     if (is_write_file){
 
-        fprintf(symbol_table->member_write_log_file, "%s(%zd): ", file, line_num);
+        fprintf(symbol_table->member_write_log_file, "%s(%zd): ", file_name, line_num);
     }
 
     if ( ! put_log_msg_main(
@@ -168,7 +194,7 @@ bool tp_put_log_msg(
         symbol_table->member_log_hide_after_disp = true;
     }
 
-    errno_t err = _set_errno(0);
+    err = _set_errno(0);
 
     return true;
 }
@@ -349,15 +375,15 @@ static bool convert_string_to_value(
 
     char* error_first_char = NULL;
 
-    long value = strtol(symbol_table->member_temp_buffer, &error_first_char, 0);
+    size_t value = (size_t)strtoull(symbol_table->member_temp_buffer, &error_first_char, 0);
 
-    if (NULL == error_first_char){
+    if (symbol_table->member_temp_buffer == error_first_char){
 
         if (is_disp){
 
             fprintf(
                 symbol_table->member_disp_log_file,
-                "\nERROR: strtol(\"%s\") convert failed at %s(%d).\n", symbol_table->member_temp_buffer,
+                "\nERROR: strtoull(\"%s\") convert failed at %s(%d).\n", symbol_table->member_temp_buffer,
                 __func__, __LINE__
             );
         }
@@ -366,7 +392,7 @@ static bool convert_string_to_value(
 
             fprintf(
                 symbol_table->member_write_log_file,
-                "\nERROR: strtol(\"%s\") convert failed at %s(%d).\n", symbol_table->member_temp_buffer,
+                "\nERROR: strtoull(\"%s\") convert failed at %s(%d).\n", symbol_table->member_temp_buffer,
                 __func__, __LINE__
             );
         }
@@ -381,7 +407,7 @@ static bool convert_string_to_value(
         return false;
     }
 
-    *param_index = (size_t)value;
+    *param_index = value;
 
     return true;
 }
@@ -430,19 +456,27 @@ static bool write_param_log_msg(
     }
 
     switch (log_param_element[param_index].member_type){
-    case TP_LOG_PARAM_TYPE_STRING:
+    case TP_LOG_PARAM_TYPE_STRING:{
+
+        uint8_t* string = log_param_element[param_index].member_body.member_string;
+
+        if (NULL == string){
+
+            string = "(null)";
+        }
 
         if (is_disp){
 
-            fprintf(symbol_table->member_disp_log_file, "%s", log_param_element[param_index].member_body.member_string);
+            fprintf(symbol_table->member_disp_log_file, "%s", string);
         }
 
         if (is_write_file){
 
-            fprintf(symbol_table->member_write_log_file, "%s", log_param_element[param_index].member_body.member_string);
+            fprintf(symbol_table->member_write_log_file, "%s", string);
         }
 
         break;
+    }
     case TP_LOG_PARAM_TYPE_INT32_VALUE:
 
         if (is_disp){

@@ -1,5 +1,5 @@
 
-// Copyright (C) 2018-2020 Shin'ichi Ichikawa. Released under the MIT license.
+// (C) Shin'ichi Ichikawa. Released under the MIT license.
 
 #include "tp_compiler.h"
 

@@ -1,5 +1,5 @@
 
-// Copyright (C) 2018 Shin'ichi Ichikawa. Released under the MIT license.
+// (C) Shin'ichi Ichikawa. Released under the MIT license.
 
 #include "tp_compiler.h"
 
@@ -703,7 +703,7 @@ static bool is_valid_utf_8(TP_SYMBOL_TABLE* symbol_table, uint8_t* lines_buffer,
             continue;
         }
 
-        int32_t total_bytes = 0;
+        rsize_t total_bytes = 0;
 
         bool is_lead_byte_zero = false;
 
@@ -731,7 +731,7 @@ static bool is_valid_utf_8(TP_SYMBOL_TABLE* symbol_table, uint8_t* lines_buffer,
             TP_PUT_LOG_MSG(
                 symbol_table, TP_LOG_TYPE_DISP_FORCE,
                 TP_MSG_FMT("ERROR: Invalid UTF-8(No.1), total_bytes = %1."),
-                TP_LOG_PARAM_INT32_VALUE(total_bytes)
+                TP_LOG_PARAM_UINT64_VALUE(total_bytes)
             );
 
             return false;
