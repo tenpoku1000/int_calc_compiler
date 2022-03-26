@@ -4,6 +4,7 @@
 #if ! defined(INT_CALC_COMPILER_H_)
 #define INT_CALC_COMPILER_H_
 
+#define MICROSOFT_WINDOWS_WINBASE_H_DEFINE_INTERLOCKED_CPLUSPLUS_OVERLOADS 0
 #include <windows.h>
 #include <stdio.h>
 #define _CRTDBG_MAP_ALLOC
